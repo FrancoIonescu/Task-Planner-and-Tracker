@@ -1,0 +1,4 @@
+.env
+node_modules
+initializare.txt
+db_script.sql

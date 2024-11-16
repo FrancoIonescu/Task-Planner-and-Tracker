@@ -1,0 +1,29 @@
+body {
+    margin: 0;
+    background-color: aliceblue;
+}
+
+.navbar {
+    height: 70px;  
+    background-color: white;
+    display: flex;
+    align-items: center; 
+}
+
+.navbar h1 {
+    padding-left: 20px;
+}
+
+.navbar form {
+    display: flex;
+    margin-left: auto;  
+    padding-right: 20px;
+}
+
+.navbar input {
+    margin-right: 10px;
+}
+
+.navbar button {
+    cursor: pointer;
+}

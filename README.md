@@ -67,3 +67,14 @@ Realizarea unei aplicații web care permite alocarea și monitorizarea realizăr
 
 3. **Baza de date**:
    - Relatională (**MySQL**), cu tabele pentru utilizatori, task-uri și relațiile dintre ele.
+
+---
+  
+## Instrucțiuni de rulare
+1. Clonați repository-ul cu proiectul.
+2. Creați în directorul `server` un fișier `.env` cu informațiile bazei de date.
+3. Din directorul `client` rulați `npm install`.
+4. Din directorul `client` rulați `npm run dev`.
+5. Din directorul `server` rulați `npm install`.
+6. Din directorul `server` rulați `npm run dev`.
+7. Accesați aplicația în browser la: https://localhost:5173.

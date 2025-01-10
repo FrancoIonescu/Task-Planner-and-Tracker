@@ -2,49 +2,52 @@ import React, { useState, useEffect } from 'react';
 import './styles/Navbar.css';
 
 const Navbar = () => {
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
+    const [esteConectat, setEsteConectat] = useState(false);
+    const [numeUtilizator, setNumeUtilizator] = useState('');
+    const [parola, setParola] = useState('');
+    const API_URL = import.meta.env.VITE_API_URL;
 
     useEffect(() => {
-        const checkSession = async () => {
-            const response = await fetch('http://localhost:5000/check-session', {
+        const verificaSesiunea = async () => {
+            const raspuns = await fetch(`${API_URL}/sesiune`, {
                 method: 'GET',
                 credentials: 'include',
             });
-            if (response.ok) {
-                setIsLoggedIn(true);
+            if (raspuns.ok) {
+                const date = await raspuns.json();
+                setEsteConectat(true);
+                setNumeUtilizator(date.nume)
             }
         };
-        checkSession();
+        verificaSesiunea();
     }, []);
 
-    const handleLogin = async (e) => {
+    const gestioneazaConectare = async (e) => {
         e.preventDefault();
 
-        const response = await fetch('http://localhost:5000/login', {
+        const raspuns = await fetch(`${API_URL}/conectare`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ nume: username, parola: password }),
+            body: JSON.stringify({ nume: numeUtilizator, parola: parola }),
             credentials: 'include',
         });
 
-        if (response.ok) {
-            setIsLoggedIn(true);
+        if (raspuns.ok) {
+            setEsteConectat(true);
             window.location.reload(); 
         } else {
-            alert('Username sau parolă incorectă');
+            alert('Nume utilizator sau parolă incorectă');
         }
     };
 
-    const handleLogout = async () => {
-        await fetch('http://localhost:5000/logout', {
+    const gestioneazaDeconectare = async () => {
+        await fetch(`${API_URL}/deconectare`, {
             method: 'POST',
             credentials: 'include',
         });
-        setIsLoggedIn(false);
+        setEsteConectat(false);
         window.location.reload();
     };
 
@@ -52,26 +55,27 @@ const Navbar = () => {
         <nav>
             <div className="navbar">
                 <h1>Task Planner and Tracker</h1>
+                {esteConectat && <p>Bun venit, {numeUtilizator}!</p>}
                 <div className="login-container">
-                    {isLoggedIn ? (
-                        <button onClick={handleLogout}>Logout</button>
+                    {esteConectat ? (
+                        <button onClick={gestioneazaDeconectare}>Deconectare</button>
                     ) : (
-                        <form onSubmit={handleLogin}>
+                        <form onSubmit={gestioneazaConectare}>
                             <input
                                 type="text"
-                                placeholder="Username"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
+                                placeholder="Nume utilizator"
+                                value={numeUtilizator}
+                                onChange={(e) => setNumeUtilizator(e.target.value)}
                                 required
                             />
                             <input
                                 type="password"
-                                placeholder="Password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="Parolă"
+                                value={parola}
+                                onChange={(e) => setParola(e.target.value)}
                                 required
                             />
-                            <button type="submit">Login</button>
+                            <button type="submit">Conectare</button>
                         </form>
                     )}
                 </div>

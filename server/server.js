@@ -1,19 +1,20 @@
 express = require('express');
 const sequelize = require('./db');
 const Utilizator = require('./utilizator');  
+const Task = require('./task');
+require('./asocieri');
 const session = require('express-session'); 
 const cors = require('cors');
 require('dotenv').config();
 const app = express();
-const port = 5000;
+const port = process.env.PORT;
 
 app.use(express.json());
 app.use(express.static(__dirname));
 app.use(cors({
-    origin: 'http://localhost:5173', 
-    methods: ['GET', 'POST', 'PUT'],  
+    origin: process.env.FRONTEND_URL, 
     credentials: true
-  }));
+}));
 
 app.use(session({
     secret: process.env.SESSION_SECRET,  
@@ -22,7 +23,7 @@ app.use(session({
     cookie: { secure: false } 
 }));
 
-app.post('/login', async (req, res) => {
+app.post('/conectare', async (req, res) => {
     const { nume, parola } = req.body;
 
     try {
@@ -38,6 +39,7 @@ app.post('/login', async (req, res) => {
 
         req.session.utilizatorId = utilizator.id;  
         req.session.nume = utilizator.nume;
+        req.session.rol = utilizator.rol;
 
         res.json({
             id: utilizator.id,
@@ -52,7 +54,7 @@ app.post('/login', async (req, res) => {
     }
 });
 
-app.get('/check-session', (req, res) => {
+app.get('/sesiune', (req, res) => {
     if (req.session.utilizatorId) {
         res.json({ nume: req.session.nume });
     } else {
@@ -60,7 +62,7 @@ app.get('/check-session', (req, res) => {
     }
 });
 
-app.post('/logout', (req, res) => {
+app.post('/deconectare', (req, res) => {
     req.session.destroy((err) => {
         if (err) {
             return res.status(500).json({ message: 'Eroare la deconectare' });
@@ -69,19 +71,105 @@ app.post('/logout', (req, res) => {
     });
 });
 
-app.get('/tasks', async (req, res) => {
+app.get('/utilizator', async (req, res) => {
     if (!req.session.utilizatorId) {
         return res.status(401).json({ message: 'Nu ești logat' });
     }
 
     try {
-        const taskuri = await sequelize.query(
-            'SELECT * FROM taskuri WHERE alocat_la = :utilizatorId', 
-            {
-                replacements: { utilizatorId: req.session.utilizatorId },
-                type: sequelize.QueryTypes.SELECT
-            }
-        );
+        const utilizator = await Utilizator.findByPk(req.session.utilizatorId, {
+            attributes: ['id', 'nume', 'rol']
+        });
+
+        if (!utilizator) {
+            return res.status(404).json({ message: 'Utilizatorul nu a fost găsit' });
+        }
+
+        res.json({
+            id: utilizator.id,
+            nume: utilizator.nume,
+            rol: utilizator.rol
+        });
+    } catch (err) {
+        console.error('Eroare la obținerea utilizatorului curent:', err);
+        res.status(500).json({ message: 'Eroare la server' });
+    }
+});
+
+app.post('/utilizator', async (req, res) => {
+    const { nume, email, parola, rol, manager_id} = req.body;
+     if (req.session.rol !== 'admin') { 
+         return res.status(403).json({ message: 'Acces interzis. Doar administratorii pot crea utilizatori.' });
+     }
+    try {
+        const utilizatorNou = await Utilizator.create({ nume, email, parola, rol, manager_id });
+        res.status(201).json({ message: 'Utilizator creat cu succes', utilizator: utilizatorNou });
+    } catch (err) {
+        console.error('Eroare la crearea utilizatorului:', err);
+        res.status(500).json({ message: 'Eroare la server' });
+    }
+});
+
+app.get('/task', async (req, res) => {
+    if (!req.session.utilizatorId) {
+        return res.status(401).json({ message: 'Nu ești logat sau nu ai permisiuni.' });
+    }
+
+    try {
+        const { executantSelectat } = req.query;
+        const executant = req.session.rol === 'executant';
+        const utilizatorId = req.session.utilizatorId;
+        let taskuri;
+
+        if (executant) {
+            taskuri = await Task.findAll({
+                where: { alocat_la: utilizatorId },
+                include: [
+                    {
+                        model: Utilizator,
+                        as: 'creator',
+                        attributes: ['nume'] 
+                    },
+                    {
+                        model: Utilizator,
+                        as: 'executant',
+                        attributes: ['nume'] 
+                    }
+                ]
+            });
+        } else if (executantSelectat) {
+            taskuri = await Task.findAll({
+                where: { alocat_la: executantSelectat },
+                include: [
+                    {
+                        model: Utilizator,
+                        as: 'creator',
+                        attributes: ['nume'] 
+                    },
+                    {
+                        model: Utilizator,
+                        as: 'executant',
+                        attributes: ['nume']
+                    }
+                ]
+            });
+        } else {
+            taskuri = await Task.findAll({
+                include: [
+                    {
+                        model: Utilizator,
+                        as: 'creator',
+                        attributes: ['nume'] 
+                    },
+                    {
+                        model: Utilizator,
+                        as: 'executant',
+                        attributes: ['nume'] 
+                    }
+                ]
+            });
+        }
+
         res.json(taskuri);
     } catch (err) {
         console.error('Eroare la obținerea taskurilor:', err);
@@ -89,30 +177,131 @@ app.get('/tasks', async (req, res) => {
     }
 });
 
-app.put('/tasks/:taskId', async (req, res) => {
-    const { taskId } = req.params;
-    const { newStatus } = req.body;
+app.post('/task', async (req, res) => {
+    const { descriere, executantId } = req.body;
+
+    if (!req.session.utilizatorId || req.session.rol !== 'manager') {
+        return res.status(403).json({ message: 'Acces interzis. Doar managerii pot crea task-uri.' });
+    }
 
     try {
-        const task = await sequelize.query(
-            'UPDATE taskuri SET stare = :newStatus WHERE id = :taskId AND alocat_la = :utilizatorId',
-            {
-                replacements: { newStatus, taskId, utilizatorId: req.session.utilizatorId },
-                type: sequelize.QueryTypes.UPDATE
-            }
-        );
+        const stareInitiala = executantId ? 'PENDING' : 'OPEN';
 
-        if (task[0] === 0) {
-            return res.status(404).json({ message: 'Taskul nu a fost găsit sau nu îți este alocat' });
-        }
+        const taskNou = await Task.create({
+            descriere,
+            creat_de: req.session.utilizatorId,
+            alocat_la: executantId || null, 
+            stare: stareInitiala,
+        });
 
-        res.json({ message: 'Statusul taskului a fost actualizat' });
+        res.status(201).json({ message: 'Task creat cu succes', taskId: taskNou.id });
     } catch (err) {
-        console.error('Eroare la actualizarea statusului taskului:', err);
+        console.error('Eroare la crearea task-ului:', err);
         res.status(500).json({ message: 'Eroare la server' });
     }
 });
 
-app.listen(port, () => {
-    console.log(`Serverul este pornit pe http://localhost:${port}`);
+app.put('/task/:taskId', async (req, res) => {
+    const { taskId } = req.params;
+    const { alocat_la, stareNoua } = req.body;
+
+    try {
+        let task = await Task.findOne({ where: { id: taskId } });
+
+        if (!task) {
+            return res.status(404).json({ message: 'Taskul nu a fost găsit' });
+        }
+
+        if (req.session.rol !== 'manager' && task.alocat_la !== req.session.utilizatorId) {
+            return res.status(403).json({ message: 'Nu ai permisiunea de a modifica acest task' });
+        }
+
+        if (alocat_la) {
+            task.alocat_la = alocat_la;  
+        }
+
+        if (stareNoua) {
+            task.stare = stareNoua;
+            if (stareNoua === 'COMPLETED' || stareNoua === 'CLOSED') {
+                task.finalizat_la = new Date();
+            } else {
+                task.finalizat_la = null;
+            }
+        }
+
+        await task.save();
+
+        res.json({ message: 'Task-ul a fost actualizat' });
+    } catch (err) {
+        console.error('Eroare la actualizarea task-ului:', err);
+        res.status(500).json({ message: 'Eroare la server' });
+    }
+});
+
+app.delete('/task/:taskId', async (req, res) => {
+    const { taskId } = req.params;
+
+    try {
+        const task = await Task.findOne({ where: { id: taskId } });
+
+        if (!task) {
+            return res.status(404).json({ message: 'Taskul nu a fost găsit' });
+        }
+
+        if (req.session.rol !== 'manager' && task.alocat_la !== req.session.utilizatorId) {
+            return res.status(403).json({ message: 'Nu ai permisiunea de a șterge acest task' });
+        }
+
+        await task.destroy(); 
+
+        res.json({ message: 'Task-ul a fost șters cu succes' });
+    } catch (err) {
+        console.error('Eroare la ștergerea task-ului:', err);
+        res.status(500).json({ message: 'Eroare la server' });
+    }
+});
+
+app.get('/executanti', async (req, res) => {
+    if (req.session.rol !== 'manager' && req.session.rol !== 'admin') {
+        return res.status(403).json({ message: 'Acces interzis. Doar managerii pot vizualiza executanții.' });
+    }
+
+    try {
+        const executanti = await Utilizator.findAll({
+            where: { rol: 'executant' },
+            attributes: ['id', 'nume']
+        });
+
+        res.json(executanti);
+    } catch (err) {
+        console.error('Eroare la obținerea executanților:', err);
+        res.status(500).json({ message: 'Eroare la server' });
+    }
+});
+
+app.get('/manageri', async (req, res) => {
+    if (!req.session.utilizatorId || req.session.rol !== 'admin') {
+        return res.status(403).json({ message: 'Acces interzis. Doar administratorul poate vizualiza managerii.' });
+    }
+
+    try {
+        const manageri = await Utilizator.findAll({
+            where: { rol: 'manager' },
+            attributes: ['id', 'nume']
+        });
+
+        res.json(manageri);
+    } catch (err) {
+        console.error('Eroare la obținerea managerilor:', err);
+        res.status(500).json({ message: 'Eroare la server' });
+    }
+});
+
+app.listen(port, async () => {
+    try {
+        await sequelize.sync();
+        console.log(`Serverul este pornit pe http://localhost:${port}`);
+    } catch (err) {
+        console.error('Eroare la sincronizarea bazei de date:', err);
+    }
 });

@@ -1,0 +1,57 @@
+.actualizare-task {
+    padding: 20px;
+    margin: 20px auto;
+    max-width: 80%;
+    background-color: #fff;
+    border-radius: 8px;  
+    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.5);
+}
+
+.actualizare-task form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.actualizare-task select, .actualizare-task button {
+    padding: 10px;
+    font-size: 14px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+.actualizare-task select {
+    background-color: #2a75b5;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.actualizare-task select:hover {
+    background-color: #d0d0d0;
+}
+
+.actualizare-task select:focus {
+    outline: none;
+    border-color: #2a75b5;
+}
+
+.actualizare-task button {
+    padding: 10px;
+    font-size: 16px;
+    background-color: #2a75b5;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.actualizare-task button:hover {
+    background-color: #1c5e8d;
+}
+
+.actualizare-task button:focus {
+    outline: none;
+}

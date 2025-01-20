@@ -1,0 +1,61 @@
+.creare-task {
+    padding: 20px;
+    margin: 20px auto;
+    max-width: 80%;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.5);
+}
+
+.creare-task form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.creare-task input, .creare-task select {
+    padding: 10px;
+    font-size: 14px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+.creare-task input {
+    width: 100%;
+}
+
+.creare-task select {
+    background-color: #2a75b5;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.creare-task select:hover {
+    background-color: #d0d0d0;
+}
+
+.creare-task select:focus {
+    outline: none;
+    border-color: #2a75b5; 
+}
+
+.creare-task button {
+    padding: 10px;
+    font-size: 16px;
+    background-color: #2a75b5;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.creare-task button:hover {
+    background-color: #1c5e8d;
+}
+
+.creare-task button:focus {
+    outline: none;
+}
